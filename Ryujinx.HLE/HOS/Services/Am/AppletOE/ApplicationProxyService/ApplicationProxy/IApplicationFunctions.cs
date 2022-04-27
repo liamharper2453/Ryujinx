@@ -17,14 +17,14 @@ using System;
 using System.Numerics;
 
 using static LibHac.Fs.ApplicationSaveDataManagement;
-using AccountUid    = Ryujinx.HLE.HOS.Services.Account.Acc.UserId;
+using AccountUid = Ryujinx.HLE.HOS.Services.Account.Acc.UserId;
 using ApplicationId = LibHac.Ncm.ApplicationId;
 
 namespace Ryujinx.HLE.HOS.Services.Am.AppletOE.ApplicationProxyService.ApplicationProxy
 {
     class IApplicationFunctions : IpcService
     {
-        private ulong _defaultSaveDataSize        = 200000000;
+        private ulong _defaultSaveDataSize = 200000000;
         private ulong _defaultJournalSaveDataSize = 200000000;
 
         private KEvent _gpuErrorDetectedSystemEvent;
@@ -42,9 +42,9 @@ namespace Ryujinx.HLE.HOS.Services.Am.AppletOE.ApplicationProxyService.Applicati
         public IApplicationFunctions(Horizon system)
         {
             // TODO: Find where they are signaled.
-            _gpuErrorDetectedSystemEvent         = new KEvent(system.KernelContext);
+            _gpuErrorDetectedSystemEvent = new KEvent(system.KernelContext);
             _friendInvitationStorageChannelEvent = new KEvent(system.KernelContext);
-            _notificationStorageChannelEvent     = new KEvent(system.KernelContext);
+            _notificationStorageChannelEvent = new KEvent(system.KernelContext);
             _healthWarningDisappearedSystemEvent = new KEvent(system.KernelContext);
 
             _horizon = system.LibHacHorizonManager.AmClient;
@@ -123,7 +123,7 @@ namespace Ryujinx.HLE.HOS.Services.Am.AppletOE.ApplicationProxyService.Applicati
                 control = ref new BlitStruct<ApplicationControlProperty>(1).Value;
 
                 // The set sizes don't actually matter as long as they're non-zero because we use directory savedata.
-                control.UserAccountSaveDataSize        = 0x4000;
+                control.UserAccountSaveDataSize = 0x4000;
                 control.UserAccountSaveDataJournalSize = 0x4000;
 
                 Logger.Warning?.Print(LogClass.ServiceAm,
@@ -148,12 +148,10 @@ namespace Ryujinx.HLE.HOS.Services.Am.AppletOE.ApplicationProxyService.Applicati
             // TODO: When above calls are implemented, switch to using ns:am
 
             long desiredLanguageCode = context.Device.System.State.DesiredLanguageCode;
-            int desiredTitleLanguage = (int)context.Device.System.State.DesiredTitleLanguage;
-            int  supportedLanguages  = (int)context.Device.Application.ControlData.Value.SupportedLanguageFlag;
-            int  firstSupported      = BitOperations.TrailingZeroCount(supportedLanguages);
-            int numberOfCurrentlyDefinedLanguages = Enum.GetNames(typeof(TitleLanguage)).Length - 1;
+            int supportedLanguages = (int)context.Device.Application.ControlData.Value.SupportedLanguageFlag;
+            int firstSupported = BitOperations.TrailingZeroCount(supportedLanguages);
 
-            if (firstSupported > numberOfCurrentlyDefinedLanguages)
+            if (firstSupported > (int)SystemState.TitleLanguage.BrazilianPortuguese)
             {
                 Logger.Warning?.Print(LogClass.ServiceAm, "Application has zero supported languages");
 
@@ -164,9 +162,9 @@ namespace Ryujinx.HLE.HOS.Services.Am.AppletOE.ApplicationProxyService.Applicati
 
             // If desired language is not supported by application, use first supported language from TitleLanguage.
             // TODO: In the future, a GUI could enable user-specified search priority
-            if ((supportedLanguages & 1 << desiredTitleLanguage) != 1 << desiredTitleLanguage)
+            if (((1 << (int)context.Device.System.State.DesiredTitleLanguage) & supportedLanguages) == 0)
             {
-                SystemLanguage newLanguage = Enum.Parse<SystemLanguage>(Enum.GetName(typeof(TitleLanguage), firstSupported));
+                SystemLanguage newLanguage = Enum.Parse<SystemLanguage>(Enum.GetName(typeof(SystemState.TitleLanguage), firstSupported));
                 desiredLanguageCode = SystemStateMgr.GetLanguageCode((int)newLanguage);
 
                 Logger.Info?.Print(LogClass.ServiceAm, $"Application doesn't support configured language. Using {newLanguage}");
@@ -203,14 +201,14 @@ namespace Ryujinx.HLE.HOS.Services.Am.AppletOE.ApplicationProxyService.Applicati
         public ResultCode ExtendSaveData(ServiceCtx context)
         {
             SaveDataType saveDataType = (SaveDataType)context.RequestData.ReadUInt64();
-            Uid          userId       = context.RequestData.ReadStruct<Uid>();
-            ulong        saveDataSize = context.RequestData.ReadUInt64();
-            ulong        journalSize  = context.RequestData.ReadUInt64();
+            Uid userId = context.RequestData.ReadStruct<Uid>();
+            ulong saveDataSize = context.RequestData.ReadUInt64();
+            ulong journalSize = context.RequestData.ReadUInt64();
 
             // NOTE: Service calls nn::fs::ExtendApplicationSaveData.
             //       Since LibHac currently doesn't support this method, we can stub it for now.
 
-            _defaultSaveDataSize        = saveDataSize;
+            _defaultSaveDataSize = saveDataSize;
             _defaultJournalSaveDataSize = journalSize;
 
             context.ResponseData.Write((uint)ResultCode.Success);
@@ -225,7 +223,7 @@ namespace Ryujinx.HLE.HOS.Services.Am.AppletOE.ApplicationProxyService.Applicati
         public ResultCode GetSaveDataSize(ServiceCtx context)
         {
             SaveDataType saveDataType = (SaveDataType)context.RequestData.ReadUInt64();
-            Uid          userId       = context.RequestData.ReadStruct<Uid>();
+            Uid userId = context.RequestData.ReadStruct<Uid>();
 
             // NOTE: Service calls nn::fs::FindSaveDataWithFilter with SaveDataType = 1 hardcoded.
             //       Then it calls nn::fs::GetSaveDataAvailableSize and nn::fs::GetSaveDataJournalSize to get the sizes.
@@ -379,10 +377,10 @@ namespace Ryujinx.HLE.HOS.Services.Am.AppletOE.ApplicationProxyService.Applicati
         // InitializeApplicationCopyrightFrameBuffer(s32 width, s32 height, handle<copy, transfer_memory> transfer_memory, u64 transfer_memory_size)
         public ResultCode InitializeApplicationCopyrightFrameBuffer(ServiceCtx context)
         {
-            int   width                 = context.RequestData.ReadInt32();
-            int   height                = context.RequestData.ReadInt32();
-            ulong transferMemorySize    = context.RequestData.ReadUInt64();
-            int   transferMemoryHandle  = context.Request.HandleDesc.ToCopy[0];
+            int width = context.RequestData.ReadInt32();
+            int height = context.RequestData.ReadInt32();
+            ulong transferMemorySize = context.RequestData.ReadUInt64();
+            int transferMemoryHandle = context.Request.HandleDesc.ToCopy[0];
             ulong transferMemoryAddress = context.Process.HandleTable.GetObject<KTransferMemory>(transferMemoryHandle).Address;
 
             ResultCode resultCode = ResultCode.InvalidParameters;
@@ -425,13 +423,13 @@ namespace Ryujinx.HLE.HOS.Services.Am.AppletOE.ApplicationProxyService.Applicati
         // SetApplicationCopyrightImage(buffer<bytes, 0x45> frame_buffer, s32 x, s32 y, s32 width, s32 height, s32 window_origin_mode)
         public ResultCode SetApplicationCopyrightImage(ServiceCtx context)
         {
-            ulong frameBufferPos   = context.Request.SendBuff[0].Position;
-            ulong frameBufferSize  = context.Request.SendBuff[0].Size;
-            int   x                = context.RequestData.ReadInt32();
-            int   y                = context.RequestData.ReadInt32();
-            int   width            = context.RequestData.ReadInt32();
-            int   height           = context.RequestData.ReadInt32();
-            uint  windowOriginMode = context.RequestData.ReadUInt32();
+            ulong frameBufferPos = context.Request.SendBuff[0].Position;
+            ulong frameBufferSize = context.Request.SendBuff[0].Size;
+            int x = context.RequestData.ReadInt32();
+            int y = context.RequestData.ReadInt32();
+            int width = context.RequestData.ReadInt32();
+            int height = context.RequestData.ReadInt32();
+            uint windowOriginMode = context.RequestData.ReadUInt32();
 
             ResultCode resultCode = ResultCode.InvalidParameters;
 
